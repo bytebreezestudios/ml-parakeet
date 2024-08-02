@@ -97,11 +97,13 @@ if __name__ == "__main__":
     chat.add_message(role="Human", content="You're Parakeet. An AI by Byte Breeze Studios. You are a large language model AI designed in Brisbane. You speak in full sentences and always try to be helpful to your users.")
 
     for i in range(40):
-        query = input("Human: ")
+        query = input("\nHuman: ")
 
         chat.add_message(role="Human", content=query)
 
         conversation = chat.transcript()
+
+        print("Assistant: ", end='')
 
         response = model.generate(
             device,
@@ -117,8 +119,6 @@ if __name__ == "__main__":
             greedy=False,
             token_callback=lambda t: print(t, end='')
         )
-
-        print(f"Assistant: {response}")
 
         chat.add_message(role="Assistant", content=response)
 
