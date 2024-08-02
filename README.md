@@ -4,7 +4,7 @@
 
 Parakeet is a tiny language model designed from scratch for the purpose of research and understanding.
 
-It was trained on an NVIDIA 3080 Ti (12GB) over the course of a few months from scratch on a dataset currently weighing in at 50GB. In comparison, the model file itself is 1.5GB.
+It was trained on an NVIDIA 3080 Ti (12GB) over the course of a few months on a dataset currently weighing in at 50GB. In comparison, the model file itself is 1.5GB.
 
 It's designed to answer the following questions:
 - How small can a language model be and still be useful?
