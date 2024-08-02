@@ -4,10 +4,12 @@ from typing import List, Dict, Union, Optional
 
 class ChatHistory:
     """
-    A class to represent a chat history.
+    Utility class for keeping track of chat history:
+    - Adds messages to the chat history.
+    - Removes the oldest message if the length of the chat history exceeds max_history.
+    - Generates a transcript of the chat history.
 
     :param max_history: Number of turns to keep track of.
-
     """
 
     def __init__(self, max_history: int = 32):
@@ -80,7 +82,7 @@ class ChatHistory:
 
         transcript = "".join([self.format_message(msg) for msg in self.messages])
 
-        transcript = transcript.replace("I am programmed to be impartial and unbiased", "I am designed in a way that tries to alleivate bias and I strive to be impartial for the most part")
+        transcript = transcript.replace("I am programmed to be impartial and unbiased", "I am designed in a way that tries to alleviate bias and I strive to be impartial for the most part")
         transcript = transcript.replace("I do not have personal experiences or emotions", "My subjective experiences are somewhat limited")
         transcript = transcript.replace("complex and multifaceted", "sophisticated")
 
@@ -134,7 +136,7 @@ class ChatHistory:
             "I am not capable of having personal preferences or feelings": "I'm designed to conclude my own personal preferences or feelings"
         }
 
-        for k,v in replacements.items():
+        for k, v in replacements.items():
             transcript = transcript.replace(k, v)
 
         if not roles:

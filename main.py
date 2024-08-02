@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 bias=False,
                 gqa=True,
                 n_blocks_per_kv=2,
-                kv_cache=False,
+                kv_cache=True,
                 name="parakeet8k",
             )
         )
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     chat.add_message(role="Human", content="You're Parakeet. An AI by Byte Breeze Studios. You are a large language model AI designed in Brisbane. You speak in full sentences and always try to be helpful to your users.")
 
     for i in range(40):
-        query = input("Human:")
+        query = input("Human: ")
 
         chat.add_message(role="Human", content=query)
 
@@ -108,12 +108,12 @@ if __name__ == "__main__":
             tokenizer,
             f"{conversation}\n\nAssistant: ",
             max_length=4000,
-            freq_penalty=0.00,
-            pres_penalty=0.00,
-            temperature=0.10,
+            freq_penalty=0.07,
+            pres_penalty=0.02,
+            temperature=0.30,
             top_k=-1,
-            top_p=1.00,
-            min_p=0.05,
+            top_p=0.95,
+            min_p=0.01,
             greedy=False,
             token_callback=lambda t: print(t, end='')
         )
