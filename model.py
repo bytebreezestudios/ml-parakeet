@@ -686,7 +686,8 @@ class ParakeetGPT(nn.Module):
                     next_token = torch.gather(probs_idx, -1, next_token)
 
                     # Increment token count for the sampled token.
-                    token_count[next_token] = token_count.get(next_token, 0) + 1
+                    if next_token.item():
+                        token_count[next_token.item()] = token_count.get(next_token.item(), 0) + 1
 
                 # Disallowed tokens: <|padding|>
                 if next_token.item() == tokenizer.pad_token:
