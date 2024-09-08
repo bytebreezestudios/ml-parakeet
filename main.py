@@ -110,12 +110,12 @@ if __name__ == "__main__":
             tokenizer,
             f"{conversation}\n\nAssistant: ",
             max_length=4000,
-            freq_penalty=0.07,
-            pres_penalty=0.02,
-            temperature=0.30,
-            top_k=-1,
-            top_p=0.95,
-            min_p=0.01,
+            freq_penalty=0.00,
+            pres_penalty=0.00,
+            temperature=0.70,
+            top_k=None,
+            top_p=None,
+            min_p=0.05,
             greedy=False,
             token_callback=lambda t: print(t, end='')
         )

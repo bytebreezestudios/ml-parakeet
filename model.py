@@ -238,8 +238,9 @@ class CausalAttention(nn.Module):
 
         # Attention Is All You Need: sqrt of k-dim.
         # assert C // self.n_head == k.size(-1)
-        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+        # att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         # att = (q @ k.transpose(-2, -1)) / (k.size(-1) ** 0.5)
+        att = q @ k.transpose(-2, -1) / math.sqrt(C // self.n_head)
 
         # # Create the bias tensor for ALiBi mechanism.
         # if self.alibi_bias is None or self.alibi_bias_T != T:
@@ -596,23 +597,19 @@ class ParakeetGPT(nn.Module):
                     # Select token with highest logit and add batch dimension.
                     next_token = torch.argmax(logits[..., -1, :], dim=-1).unsqueeze(0)
                 else:
-                    selected_logits = logits
-
-                    if top_k > 0:
+                    if top_k is not None:
                         # Retrieve top_k logits and their indices.
                         top_k_values, top_k_indices = torch.topk(logits, k=top_k, dim=-1)
                         # Create tensor with top_k logits only.
-                        top_k_logits = torch.zeros_like(logits).scatter(-1, top_k_indices, top_k_values)
-
-                    selected_logits = top_k_logits if top_k > 0 else logits
+                        logits = torch.zeros_like(logits).scatter(-1, top_k_indices, top_k_values)
 
                     # Compute probabilities using temperature scaling:
                     # - A high temp makes the outcomes more even (less confident), while a low temp makes certain outcomes stand out more (more confident).
 
                     # 2024-07-13: This is "Temperature First".
                     # - See: https://www.reddit.com/r/LocalLLaMA/comments/17vonjo/your_settings_are_probably_hurting_your_model_why/
-                    probs = torch.softmax(selected_logits[..., -1, :] / temperature, dim=-1).unsqueeze(0)
-                    # probs = torch.softmax(selected_logits[..., -1, :], dim=-1).unsqueeze(0)
+                    probs = torch.softmax(logits[..., -1, :] / temperature, dim=-1).unsqueeze(0)
+                    # probs = torch.softmax(logits[..., -1, :], dim=-1).unsqueeze(0)
 
                     # Get shape of probabilities tensor.
                     b, t, c = probs.shape
@@ -620,50 +617,9 @@ class ParakeetGPT(nn.Module):
                     # Reshape probabilities.
                     probs = probs.reshape(b * t, c)
 
-                    # Apply frequency penalty to reduce repetition:
-                    # - Increasing the `freq_penalty` value results in the probability of this token being multiplied by an increasingly smaller number.
-                    for token, count in token_count.items():
-                        # "Method A" raises the frequency penalty to the power of the count:
-                        #
-                        # ```python
-                        # probs[0][token] *= (1 - freq_penalty) ** count
-                        # ```
-                        #
-                        # Assuming probability of a token is 50% and the count is 10, 15 or 20...
-                        #
-                        # >> .5 * (1 - 0.2)^10 = 0.0536
-                        # >> .5 * (1 - 0.2)^15 = 0.0175
-                        # >> .5 * (1 - 0.2)^20 = 0.0057
-                        #
-                        # If the count is large, this results in a very small value for the probability of the token.
-                        # This means that frequently occurring tokens will be penalized heavily.
-                        #
-                        # "Method B" uses the exponential function to calculate the frequency penalty. Using exponential decay for a smoother penalty.
-                        #
-                        # ```python
-                        # probs[0][token] *= torch.exp(torch.tensor(-freq_penalty * count, device=device))
-                        # ```
-                        #
-                        # Assuming probability of a token is 50% and the count is 10, 15 or 20...
-                        #
-                        # >> .5 * exp((-0.2 * 10)) = 0.0676
-                        # >> .5 * exp((-0.2 * 15)) = 0.0248
-                        # >> .5 * exp((-0.2 * 20)) = 0.0091
-                        #
-                        # The exponential function grows more slowly than the power function, so the penalty for frequently occurring tokens is not as severe.
-                        # This means that rare tokens will be penalized less heavily.
-                        continue
-
                     # Sort probabilities and apply top-p (nucleus) sampling:
                     # - Indices correlate with token index from the sparse vocab tensor.
                     probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
-
-                    # `min_p` filtering.
-
-                    min_p_mask = probs_sort >= min_p
-                    if min_p_mask.sum() > 0:
-                        probs_sort = probs_sort[:, min_p_mask[0]]
-                        probs_idx = probs_idx[:, min_p_mask[0]]
 
                     if top_p is not None:
                         # `top_p` sampling:
@@ -675,7 +631,13 @@ class ParakeetGPT(nn.Module):
                         probs_mask = probs_sum - probs_sort > top_p
                         probs_sort[probs_mask] = 0.0
 
-                    # probs_sort = torch.softmax(probs_sort[..., -1, :] / temperature, dim=-1).unsqueeze(0)
+                    # `min_p` filtering.
+                    if min_p is not None:
+                        _min_p = probs_sort.max() * min_p
+                        min_p_mask = probs_sort >= _min_p
+                        if min_p_mask.sum() > 0:
+                            probs_sort = probs_sort[:, min_p_mask[0]]
+                            probs_idx = probs_idx[:, min_p_mask[0]]
 
                     # Re-distribute over 1. aka. normalize the truncated distribution.
                     # top_p_probs /= top_p_probs.sum()
