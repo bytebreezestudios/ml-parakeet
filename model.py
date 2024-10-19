@@ -606,10 +606,9 @@ class ParakeetGPT(nn.Module):
                     # Compute probabilities using temperature scaling:
                     # - A high temp makes the outcomes more even (less confident), while a low temp makes certain outcomes stand out more (more confident).
 
-                    # 2024-07-13: This is "Temperature First".
+                    # 2024-07-13: `...logits[..., -1, :] / temperature` is "Temperature First".
                     # - See: https://www.reddit.com/r/LocalLLaMA/comments/17vonjo/your_settings_are_probably_hurting_your_model_why/
-                    probs = torch.softmax(logits[..., -1, :] / temperature, dim=-1).unsqueeze(0)
-                    # probs = torch.softmax(logits[..., -1, :], dim=-1).unsqueeze(0)
+                    probs = torch.nn.functional.softmax(logits[..., -1, :], dim=-1).unsqueeze(0)
 
                     # Get shape of probabilities tensor.
                     b, t, c = probs.shape
@@ -639,8 +638,10 @@ class ParakeetGPT(nn.Module):
                             probs_sort = probs_sort[:, min_p_mask[0]]
                             probs_idx = probs_idx[:, min_p_mask[0]]
 
+                    # Post-sampled temperature scaling...
+                    probs_sort /= temperature
+
                     # Re-distribute over 1. aka. normalize the truncated distribution.
-                    # top_p_probs /= top_p_probs.sum()
                     probs_sort.div_(probs_sort.sum(dim=-1, keepdim=True))
 
                     # `torch.multinomial` will sample N values and return their indices (in this case just 1).
